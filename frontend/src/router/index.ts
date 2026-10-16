@@ -9,8 +9,42 @@ export const routes = [
     meta: { public: true },
   },
   { path: '/', name: 'home', component: () => import('../views/HomeView.vue') },
-  { path: '/customer', name: 'customer', component: () => import('../views/CustomerHomeView.vue') },
-  { path: '/driver', name: 'driver', component: () => import('../views/DriverHomeView.vue') },
+  {
+    path: '/customer',
+    name: 'customer',
+    component: () => import('../views/CustomerHomeView.vue'),
+    meta: { role: 'customer' },
+  },
+  {
+    path: '/customer/requests',
+    name: 'requests',
+    component: () => import('../views/RequestsListView.vue'),
+    meta: { role: 'customer' },
+  },
+  {
+    path: '/customer/requests/new',
+    name: 'request-new',
+    component: () => import('../views/RequestNewView.vue'),
+    meta: { role: 'customer' },
+  },
+  {
+    path: '/customer/requests/:id(\\d+)',
+    name: 'request-detail',
+    component: () => import('../views/RequestDetailView.vue'),
+    meta: { role: 'customer' },
+  },
+  {
+    path: '/customer/requests/:id(\\d+)/edit',
+    name: 'request-edit',
+    component: () => import('../views/RequestEditView.vue'),
+    meta: { role: 'customer' },
+  },
+  {
+    path: '/driver',
+    name: 'driver',
+    component: () => import('../views/DriverHomeView.vue'),
+    meta: { role: 'driver' },
+  },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
@@ -31,8 +65,8 @@ export function createAppRouter(history = createWebHistory()) {
       }
     }
     // Role pages are only for users who enabled that role.
-    if (to.name === 'driver' && !auth.user?.is_driver) return { name: 'home' }
-    if (to.name === 'customer' && !auth.user?.is_customer) return { name: 'home' }
+    if (to.meta.role === 'driver' && !auth.user?.is_driver) return { name: 'home' }
+    if (to.meta.role === 'customer' && !auth.user?.is_customer) return { name: 'home' }
   })
 
   return router

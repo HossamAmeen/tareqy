@@ -37,6 +37,20 @@ describe('route guards', () => {
     expect(router.currentRoute.value.name).toBe('home')
   })
 
+  it('blocks customer pages for driver-only users', async () => {
+    const router = setup(true, { ...user, is_customer: false, is_driver: true })
+    await router.push('/customer/requests/new')
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
+  it('matches numeric request ids only', async () => {
+    const router = setup(true)
+    await router.push('/customer/requests/12')
+    expect(router.currentRoute.value.name).toBe('request-detail')
+    await router.push('/customer/requests/abc')
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
   it('allows the driver page for drivers', async () => {
     const router = setup(true, { ...user, is_driver: true })
     await router.push('/driver')
