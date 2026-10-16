@@ -1,0 +1,13 @@
+[Unit]
+Description=${SYSTEMD_SERVICE_NAME}
+After=network.target
+
+[Service]
+WorkingDirectory=${BACKEND_PATH}
+EnvironmentFile=${BACKEND_PATH}/.env
+Environment=DJANGO_SETTINGS_MODULE=config.settings.production
+ExecStart=${BACKEND_PATH}/venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:${BACKEND_PORT} --workers 3
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
