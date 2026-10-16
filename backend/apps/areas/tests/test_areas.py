@@ -11,9 +11,7 @@ def test_area_list_requires_auth(api_client):
 def test_area_list_returns_only_active_areas(auth_client, customer, areas):
     Area.objects.filter(name='معلمين').update(is_active=False)
     body = auth_client(customer).get(reverse('area-list')).json()
-    names = (
-        {a['name'] for a in body['results'] if 'results' in body} if 'results' in body else {a['name'] for a in body}
-    )
+    names = {a['name'] for a in body['data']}
     assert names == {'محطة', 'أربعين'}
 
 

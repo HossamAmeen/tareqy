@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.db.models import F, Q
+from django.utils import timezone
 
 from apps.areas.models import Area
 from common.models import BaseModel
@@ -22,6 +23,13 @@ class TripRequest(BaseModel):
     preferred_pickup_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.OPEN, db_index=True)
     expires_at = models.DateTimeField(db_index=True)
+
+    @property
+    def effective_status(self):
+        """OPEN requests past their expiry read as EXPIRED even before the expiry job has run."""
+        if self.status == self.Status.OPEN and self.expires_at <= timezone.now():
+            return self.Status.EXPIRED
+        return self.status
 
     class Meta:
         ordering = ['-created_at']

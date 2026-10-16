@@ -1,4 +1,3 @@
-from datetime import timedelta
 
 import pytest
 from django.db import IntegrityError, transaction
@@ -6,16 +5,6 @@ from django.utils import timezone
 
 from apps.trips.models import DriverInterest, StatusEvent, Trip, TripRequest
 from apps.trips.services import record_status_event
-
-
-@pytest.fixture
-def trip_request(customer, areas):
-    return TripRequest.objects.create(
-        customer=customer,
-        pickup_area=areas['محطة'],
-        destination_area=areas['أربعين'],
-        expires_at=timezone.now() + timedelta(minutes=30),
-    )
 
 
 def test_request_defaults_to_open(trip_request):

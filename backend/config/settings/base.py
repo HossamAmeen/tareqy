@@ -171,3 +171,8 @@ OTP_MAX_ATTEMPTS = env.int('OTP_MAX_ATTEMPTS', default=5)
 OTP_RESEND_COOLDOWN_SECONDS = env.int('OTP_RESEND_COOLDOWN_SECONDS', default=60)
 # Dotted path of the SMS sender. The console backend only logs, never use it in production.
 SMS_BACKEND = env('SMS_BACKEND', default='apps.accounts.sms.ConsoleSMSBackend')
+
+if CELERY_BEAT_ENABLED:
+    CELERY_BEAT_SCHEDULE = {
+        'expire-trip-requests': {'task': 'apps.trips.tasks.expire_requests', 'schedule': 60.0},
+    }
