@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+
+.venv/
+db.sqlite3
+openapi.yml
+deploy/nginx/generated/
