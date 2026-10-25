@@ -5,6 +5,7 @@ import * as api from '../api/driver'
 export const useDriverStore = defineStore('driver', () => {
   const profile = ref<api.DriverProfile | null>(null)
   const requests = ref<api.MatchedRequest[]>([])
+  const interests = ref<api.DriverInterest[]>([])
 
   async function loadProfile() {
     profile.value = await api.fetchDriverProfile()
@@ -23,11 +24,25 @@ export const useDriverStore = defineStore('driver', () => {
     requests.value = await api.fetchMatchingRequests()
   }
 
+  async function loadInterests() {
+    interests.value = await api.fetchDriverInterests()
+  }
+
   async function setInterest(id: number, interested: boolean) {
     if (interested) await api.expressInterest(id)
     else await api.withdrawInterest(id)
     await loadRequests()
   }
 
-  return { profile, requests, loadProfile, update, reportLocation, loadRequests, setInterest }
+  return {
+    profile,
+    requests,
+    interests,
+    loadInterests,
+    loadProfile,
+    update,
+    reportLocation,
+    loadRequests,
+    setInterest,
+  }
 })

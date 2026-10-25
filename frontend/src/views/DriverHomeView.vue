@@ -122,6 +122,7 @@ const clearDestination = () => run(() => driver.update({ destination_area: null 
     </section>
 
     <router-link class="card" :to="{ name: 'driver-requests' }">الطلبات المناسبة</router-link>
+    <router-link class="card" :to="{ name: 'driver-interests' }">اهتماماتي ومشاويري</router-link>
     <router-link to="/">رجوع</router-link>
   </main>
 </template>

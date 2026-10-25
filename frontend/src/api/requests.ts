@@ -7,6 +7,36 @@ export interface Area {
 
 export type RequestStatus = 'OPEN' | 'CONFIRMED' | 'CANCELLED' | 'EXPIRED'
 
+export interface Person {
+  id: number
+  name: string
+  phone: string
+}
+
+export interface Trip {
+  id: number
+  trip_request: number
+  status: 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+  agreed_price: string | null
+  pickup_details: string
+  scheduled_pickup_at: string | null
+  confirmed_at: string | null
+  counterpart: Person
+}
+
+export interface Interest {
+  id: number
+  status: 'INTERESTED' | 'CONTACTED' | 'SELECTED'
+  driver: Person
+  created_at: string
+}
+
+export interface ConfirmPayload {
+  interest: number
+  agreed_price: string
+  pickup_details?: string
+}
+
 export interface TripRequest {
   id: number
   pickup_area: Area
@@ -17,6 +47,7 @@ export interface TripRequest {
   status: RequestStatus
   expires_at: string
   created_at: string
+  trip?: Trip | null
 }
 
 export interface RequestPayload {
@@ -40,3 +71,9 @@ export const createRequest = (payload: RequestPayload) => post<TripRequest>('/re
 export const updateRequest = (id: number, payload: Partial<RequestPayload>) =>
   patch<TripRequest>(`/requests/${id}/`, payload)
 export const cancelRequest = (id: number) => post<TripRequest>(`/requests/${id}/cancel/`)
+export const fetchInterests = (id: number) => get<Interest[]>(`/requests/${id}/interests/`)
+export const markContacted = (id: number, interestId: number) =>
+  post<Interest>(`/requests/${id}/interests/${interestId}/contacted/`)
+/** `key` makes a retried confirmation return the same trip instead of a conflict. */
+export const confirmTrip = (id: number, payload: ConfirmPayload, key: string) =>
+  post<Trip>(`/requests/${id}/confirm/`, payload, { 'Idempotency-Key': key })

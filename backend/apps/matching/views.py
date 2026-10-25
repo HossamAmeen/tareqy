@@ -3,7 +3,9 @@ from rest_framework.views import APIView
 
 from apps.accounts import services as account_services
 from apps.accounts.permissions import IsDriver
+from apps.trips import selectors as trip_selectors
 from apps.trips.models import DriverInterest
+from apps.trips.serializers import DriverInterestSerializer
 from common.responses import success_response
 from common.throttling import LocationRateThrottle
 
@@ -76,3 +78,14 @@ class InterestView(APIView):
     def delete(self, request, pk):
         interest = services.withdraw_interest(request.user, pk)
         return success_response({'status': interest.status}, message='Interest withdrawn.')
+
+
+class DriverInterestListView(APIView):
+    """The driver's own interests with outcome, agreement and (once contact began) the customer's phone."""
+
+    permission_classes = [IsDriver]
+
+    @extend_schema(responses=DriverInterestSerializer(many=True))
+    def get(self, request):
+        interests = trip_selectors.driver_interests(request.user)
+        return success_response(DriverInterestSerializer(interests, many=True).data)

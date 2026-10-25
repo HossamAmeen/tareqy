@@ -19,3 +19,13 @@ export const LOCATION_STATUS_LABELS: Record<LocationStatus, string> = {
   fresh: 'حديث',
   stale: 'قديم، افتح التطبيق لتحديثه',
 }
+
+export const INTEREST_LABELS: Record<string, string> = {
+  INTERESTED: 'بانتظار العميل',
+  CONTACTED: 'تم التواصل معك',
+  DECLINED: 'لم يتم اختيارك',
+  SELECTED: 'تم اختيارك',
+}
+
+export const phoneHref = (phone: string) => `tel:${phone}`
+export const whatsappHref = (phone: string) => `https://wa.me/${phone.replace(/\D/g, '')}`

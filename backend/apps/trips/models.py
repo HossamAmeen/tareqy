@@ -75,6 +75,8 @@ class Trip(BaseModel):
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    # Idempotency-Key of the confirm call, so a retried confirmation returns this trip instead of a conflict.
+    confirm_idempotency_key = models.CharField(max_length=64, blank=True)
 
     class Meta:
         constraints = [

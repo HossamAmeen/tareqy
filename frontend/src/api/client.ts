@@ -89,8 +89,8 @@ http.interceptors.response.use(
 export async function get<T>(url: string): Promise<T> {
   return (await http.get<Envelope<T>>(url)).data.data
 }
-export async function post<T>(url: string, body?: unknown): Promise<T> {
-  return (await http.post<Envelope<T>>(url, body)).data.data
+export async function post<T>(url: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
+  return (await http.post<Envelope<T>>(url, body, { headers })).data.data
 }
 export async function patch<T>(url: string, body?: unknown): Promise<T> {
   return (await http.patch<Envelope<T>>(url, body)).data.data

@@ -51,6 +51,12 @@ export const routes = [
     component: () => import('../views/DriverRequestsView.vue'),
     meta: { role: 'driver' },
   },
+  {
+    path: '/driver/interests',
+    name: 'driver-interests',
+    component: () => import('../views/DriverInterestsView.vue'),
+    meta: { role: 'driver' },
+  },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 

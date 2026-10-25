@@ -1,13 +1,14 @@
 from datetime import timedelta
 
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from apps.accounts.models import DriverProfile
 from apps.notifications.services import create_notification
 from common.exceptions import BusinessRuleError, ConflictError
 
-from .models import DriverInterest, StatusEvent, TripRequest
+from .models import DriverInterest, StatusEvent, Trip, TripRequest
 
 # Allowed request transitions; enforced on the server only.
 REQUEST_TRANSITIONS = {
@@ -18,6 +19,7 @@ REQUEST_TRANSITIONS = {
 }
 
 LIVE_INTEREST_STATUSES = (DriverInterest.Status.INTERESTED, DriverInterest.Status.CONTACTED)
+ACTIVE_TRIP_STATUSES = (Trip.Status.CONFIRMED, Trip.Status.IN_PROGRESS)
 SUBSTANTIAL_FIELDS = ('pickup_area', 'destination_area')
 
 
@@ -149,3 +151,100 @@ def expire_due_requests(now=None):
             _decline_live_interests(trip_request, None, 'REQUEST_EXPIRED')
             expired += 1
     return expired
+
+
+def _lock_open_request(trip_request):
+    """Lock the request and make sure it can still take part in contact/confirmation."""
+    trip_request = _lock(trip_request)
+    if trip_request.status != TripRequest.Status.OPEN:
+        raise ConflictError(f'The request is {trip_request.status} and can no longer be changed.')
+    if trip_request.expires_at <= timezone.now():
+        raise ConflictError('The request has expired.')
+    return trip_request
+
+
+@transaction.atomic
+def mark_contacted(trip_request, interest_id, actor):
+    """The customer started talking to an interested driver. Idempotent."""
+    trip_request = _lock_open_request(trip_request)
+    interest = trip_request.interests.select_for_update().filter(pk=interest_id).first()
+    if interest is None:
+        raise BusinessRuleError('Driver interest not found.')
+    if interest.status == DriverInterest.Status.CONTACTED:
+        return interest
+    if interest.status != DriverInterest.Status.INTERESTED:
+        raise ConflictError('This driver is no longer interested.')
+    interest.status = DriverInterest.Status.CONTACTED
+    interest.save(update_fields=['status', 'modified_at'])
+    record_status_event(interest, DriverInterest.Status.INTERESTED, interest.status, actor)
+    create_notification(
+        interest.driver,
+        'CUSTOMER_CONTACTED',
+        related_object_id=trip_request.pk,
+        dedupe_key=f'CUSTOMER_CONTACTED:{interest.pk}',
+    )
+    return interest
+
+
+@transaction.atomic
+def confirm_trip(
+    trip_request, actor, *, interest_id, agreed_price, pickup_details='', scheduled_pickup_at=None, idempotency_key=''
+):
+    """Confirm exactly one driver for an open request. Returns (trip, created).
+
+    Everything happens under a row lock on the request (then on the driver's profile), so two
+    simultaneous confirmations serialise and the second sees a CONFIRMED request.
+    """
+    locked = _lock(trip_request)
+    if idempotency_key and locked.status == TripRequest.Status.CONFIRMED:
+        replay = (
+            Trip.objects.filter(trip_request=locked, confirm_idempotency_key=idempotency_key)
+            .exclude(status=Trip.Status.CANCELLED)
+            .first()
+        )
+        if replay:
+            return replay, False
+
+    trip_request = _lock_open_request(trip_request)
+    if scheduled_pickup_at and scheduled_pickup_at <= timezone.now():
+        raise BusinessRuleError('Pickup time must be in the future.')
+
+    interest = trip_request.interests.select_for_update().filter(pk=interest_id).first()
+    if interest is None:
+        raise BusinessRuleError('Driver interest not found.')
+    if interest.status not in LIVE_INTEREST_STATUSES:
+        raise ConflictError('This driver is no longer interested.')
+
+    # Driver conflict policy: lock the driver's profile so concurrent confirmations for the same driver serialise.
+    driver = interest.driver
+    DriverProfile.objects.select_for_update().get_or_create(user=driver)
+    if not (driver.is_driver and driver.is_active):
+        raise ConflictError('This driver is not available.')
+    active = Trip.objects.filter(driver=driver, status__in=ACTIVE_TRIP_STATUSES).count()
+    if active >= settings.DRIVER_MAX_ACTIVE_TRIPS:
+        raise ConflictError('This driver is no longer available for another trip.')
+
+    try:
+        with transaction.atomic():
+            trip = Trip.objects.create(
+                trip_request=trip_request,
+                driver=driver,
+                agreed_price=agreed_price,
+                pickup_details=pickup_details,
+                scheduled_pickup_at=scheduled_pickup_at,
+                confirmed_at=timezone.now(),
+                confirm_idempotency_key=idempotency_key,
+            )
+    except IntegrityError as exc:
+        raise ConflictError('This request already has a confirmed trip.') from exc
+    record_status_event(trip, '', trip.status, actor)
+
+    previous = interest.status
+    interest.status = DriverInterest.Status.SELECTED
+    interest.save(update_fields=['status', 'modified_at'])
+    record_status_event(interest, previous, interest.status, actor)
+
+    _transition(trip_request, TripRequest.Status.CONFIRMED, actor)
+    _decline_live_interests(trip_request, actor, 'INTEREST_NOT_SELECTED')
+    create_notification(driver, 'TRIP_CONFIRMED', related_object_id=trip.pk, dedupe_key=f'TRIP_CONFIRMED:{trip.pk}')
+    return trip, True

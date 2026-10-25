@@ -117,6 +117,7 @@
 | S6-6 | FE | Report-user/trip flow; safety guidance + terms/privacy pages | 3 |
 | S6-7 | QA | Full acceptance run of AC 1–14 (checklist, e2e with Playwright) | 8 |
 | S6-8 | OPS | Staging/prod deploy, backups, Sentry, uptime alert | 5 |
+| S6-10 | BE | Admin driver verification (`verified` flag on DriverProfile, required to enable driver mode) per approved decision 1 | 3 |
 | S6-9 | Doc | Legal/regulatory review sign-off; pilot plan (one area, onboarding drivers) | 3 |
 
 ---

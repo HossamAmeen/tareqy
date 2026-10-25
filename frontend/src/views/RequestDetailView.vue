@@ -2,9 +2,10 @@
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { errorMessage } from '../api/client'
+import InterestedDrivers from '../components/InterestedDrivers.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { usePolling } from '../composables/usePolling'
-import { formatDateTime, isEditable } from '../labels'
+import { formatDateTime, isEditable, phoneHref, whatsappHref } from '../labels'
 import { useRequestsStore } from '../stores/requests'
 
 const store = useRequestsStore()
@@ -50,8 +51,20 @@ async function cancel() {
       <span v-if="request.notes">ملاحظات: {{ request.notes }}</span>
       <span v-if="request.status === 'OPEN'">ينتهي: {{ formatDateTime(request.expires_at) }}</span>
       <p v-if="request.status === 'OPEN'">بانتظار سائق مهتم. سنعرض هنا السائقين عند اهتمامهم بطلبك.</p>
+      <template v-else-if="request.status === 'CONFIRMED' && request.trip">
+        <strong>تم تأكيد المشوار</strong>
+        <span>السائق: {{ request.trip.counterpart.name || 'سائق' }}</span>
+        <span>السعر المتفق عليه: {{ request.trip.agreed_price }}</span>
+        <span v-if="request.trip.pickup_details">مكان الركوب: {{ request.trip.pickup_details }}</span>
+        <span class="actions">
+          <a :href="phoneHref(request.trip.counterpart.phone)">اتصال</a>
+          <a :href="whatsappHref(request.trip.counterpart.phone)" target="_blank" rel="noopener">واتساب</a>
+        </span>
+      </template>
       <p v-else-if="request.status === 'EXPIRED'">انتهت صلاحية الطلب دون تأكيد. يمكنك إنشاء طلب جديد.</p>
     </section>
+
+    <InterestedDrivers v-if="request?.status === 'OPEN'" :request-id="id" @confirmed="refresh" />
 
     <template v-if="request && isEditable(request.status)">
       <router-link class="card" :to="{ name: 'request-edit', params: { id } }">تعديل الطلب</router-link>
@@ -60,3 +73,10 @@ async function cancel() {
     <router-link :to="{ name: 'requests' }">كل طلباتي</router-link>
   </main>
 </template>
+
+<style scoped>
+.actions {
+  display: flex;
+  gap: 16px;
+}
+</style>

@@ -1,5 +1,5 @@
 import { del, get, patch, post } from './client'
-import type { Area } from './requests'
+import type { Area, Trip } from './requests'
 
 export type Availability = 'OFFLINE' | 'AVAILABLE'
 export type LocationStatus = 'none' | 'fresh' | 'stale'
@@ -39,3 +39,20 @@ export const sendDriverLocation = (latitude: string, longitude: string) =>
 export const fetchMatchingRequests = () => get<MatchedRequest[]>('/driver/requests/')
 export const expressInterest = (id: number) => post<{ status: InterestStatus }>(`/requests/${id}/interest/`)
 export const withdrawInterest = (id: number) => del<{ status: InterestStatus }>(`/requests/${id}/interest/`)
+
+export interface DriverInterest {
+  id: number
+  status: InterestStatus
+  request: {
+    id: number
+    pickup_area: Area
+    destination_area: Area
+    notes: string
+    status: string
+    expires_at: string
+  }
+  trip: Trip | null
+  customer_phone: string | null
+}
+
+export const fetchDriverInterests = () => get<DriverInterest[]>('/driver/interests/')

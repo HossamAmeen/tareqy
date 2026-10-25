@@ -3,7 +3,90 @@ from rest_framework import serializers
 from apps.areas.models import Area
 from apps.areas.serializers import AreaSerializer
 
-from .models import TripRequest
+from .models import DriverInterest, Trip, TripRequest
+
+
+class PersonSerializer(serializers.Serializer):
+    """The other party in a trip. The phone is only ever serialised for a customer<->driver pair."""
+
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    phone = serializers.CharField(read_only=True)
+
+
+class TripSerializer(serializers.ModelSerializer):
+    """A trip with its agreement. `context['role']` ('customer' | 'driver') decides who the counterpart is."""
+
+    counterpart = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Trip
+        fields = [
+            'id',
+            'trip_request',
+            'status',
+            'agreed_price',
+            'pickup_details',
+            'scheduled_pickup_at',
+            'confirmed_at',
+            'counterpart',
+        ]
+        read_only_fields = fields
+
+    def get_counterpart(self, obj):
+        person = obj.driver if self.context.get('role') == 'customer' else obj.trip_request.customer
+        return PersonSerializer(person).data
+
+
+class InterestSerializer(serializers.ModelSerializer):
+    driver = PersonSerializer(read_only=True)
+
+    class Meta:
+        model = DriverInterest
+        fields = ['id', 'status', 'driver', 'created_at']
+        read_only_fields = fields
+
+
+class ConfirmSerializer(serializers.Serializer):
+    interest = serializers.IntegerField()
+    agreed_price = serializers.DecimalField(max_digits=8, decimal_places=2, min_value=0)
+    pickup_details = serializers.CharField(max_length=300, required=False, allow_blank=True)
+    scheduled_pickup_at = serializers.DateTimeField(required=False, allow_null=True)
+
+
+class DriverInterestSerializer(serializers.ModelSerializer):
+    """The driver's view of one of their interests. The customer's phone appears only once contact began."""
+
+    request = serializers.SerializerMethodField()
+    trip = serializers.SerializerMethodField()
+    customer_phone = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DriverInterest
+        fields = ['id', 'status', 'request', 'trip', 'customer_phone']
+        read_only_fields = fields
+
+    def get_request(self, obj):
+        req = obj.trip_request
+        return {
+            'id': req.pk,
+            'pickup_area': AreaSerializer(req.pickup_area).data,
+            'destination_area': AreaSerializer(req.destination_area).data,
+            'notes': req.notes,
+            'status': req.effective_status,
+            'expires_at': req.expires_at,
+        }
+
+    def get_trip(self, obj):
+        if obj.status != DriverInterest.Status.SELECTED:
+            return None
+        trip = next((t for t in obj.trip_request.trips.all() if t.driver_id == obj.driver_id), None)
+        return TripSerializer(trip, context={'role': 'driver'}).data if trip else None
+
+    def get_customer_phone(self, obj) -> str | None:
+        if obj.status in (DriverInterest.Status.CONTACTED, DriverInterest.Status.SELECTED):
+            return obj.trip_request.customer.phone
+        return None
 
 
 class TripRequestSerializer(serializers.ModelSerializer):
@@ -11,6 +94,7 @@ class TripRequestSerializer(serializers.ModelSerializer):
     destination_area = AreaSerializer(read_only=True)
     status = serializers.CharField(source='effective_status', read_only=True)
     pickup_location_is_precise = serializers.SerializerMethodField()
+    trip = serializers.SerializerMethodField()
 
     class Meta:
         model = TripRequest
@@ -24,8 +108,13 @@ class TripRequestSerializer(serializers.ModelSerializer):
             'status',
             'expires_at',
             'created_at',
+            'trip',
         ]
         read_only_fields = fields
+
+    def get_trip(self, obj):
+        trip = next((t for t in obj.trips.all() if t.status != Trip.Status.CANCELLED), None)
+        return TripSerializer(trip, context={'role': 'customer'}).data if trip else None
 
     def get_pickup_location_is_precise(self, obj) -> bool:
         return obj.pickup_latitude is not None and obj.pickup_longitude is not None

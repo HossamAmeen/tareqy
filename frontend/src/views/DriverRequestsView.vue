@@ -60,6 +60,7 @@ async function toggle(id: number, status: string | null) {
       </button>
     </section>
 
+    <router-link :to="{ name: 'driver-interests' }">اهتماماتي ومشاويري</router-link>
     <router-link :to="{ name: 'driver' }">وضع السائق</router-link>
   </main>
 </template>
