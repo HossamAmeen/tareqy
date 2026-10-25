@@ -21,3 +21,12 @@ class Notification(BaseModel):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class PushSubscription(BaseModel):
+    """A browser Web Push endpoint registered by a user (one user may have several devices)."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='push_subscriptions')
+    endpoint = models.TextField(unique=True)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)

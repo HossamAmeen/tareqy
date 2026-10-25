@@ -26,6 +26,7 @@ export default defineConfig({
       },
       workbox: {
         // Offline: serve the app shell for navigations, never cache API responses.
+        importScripts: ['push-sw.js'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/admin\//],
       },

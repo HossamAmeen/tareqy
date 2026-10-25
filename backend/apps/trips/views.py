@@ -84,3 +84,44 @@ class TripRequestViewSet(
             message='Trip confirmed.' if created else 'Trip already confirmed.',
             status_code=201 if created else 200,
         )
+
+
+class TripViewSet(EnvelopeMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    """Trips the user takes part in, as customer or as driver."""
+
+    serializer_class = TripSerializer
+
+    def get_queryset(self):
+        return selectors.user_trips(self.request.user)
+
+    @staticmethod
+    def _role(user, trip):
+        return 'driver' if trip is not None and trip.driver_id == user.pk else 'customer'
+
+    def _render(self, trip, message):
+        return success_response(
+            TripSerializer(trip, context={'role': self._role(self.request.user, trip)}).data, message
+        )
+
+    def retrieve(self, request, *args, **kwargs):
+        trip = self.get_object()
+        return success_response(TripSerializer(trip, context={'role': self._role(request.user, trip)}).data)
+
+    def list(self, request, *args, **kwargs):
+        rows = [TripSerializer(t, context={'role': self._role(request.user, t)}).data for t in self.get_queryset()]
+        return success_response(rows)
+
+    @extend_schema(request=None, responses={200: TripSerializer})
+    @action(detail=True, methods=['post'])
+    def start(self, request, pk=None):
+        return self._render(services.start_trip(self.get_object(), request.user), 'Trip started.')
+
+    @extend_schema(request=None, responses={200: TripSerializer})
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        return self._render(services.complete_trip(self.get_object(), request.user), 'Trip completed.')
+
+    @extend_schema(request=None, responses={200: TripSerializer})
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        return self._render(services.cancel_trip(self.get_object(), request.user), 'Trip cancelled.')

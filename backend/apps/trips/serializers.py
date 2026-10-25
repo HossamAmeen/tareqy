@@ -18,20 +18,32 @@ class TripSerializer(serializers.ModelSerializer):
     """A trip with its agreement. `context['role']` ('customer' | 'driver') decides who the counterpart is."""
 
     counterpart = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+    pickup_area = AreaSerializer(source='trip_request.pickup_area', read_only=True)
+    destination_area = AreaSerializer(source='trip_request.destination_area', read_only=True)
 
     class Meta:
         model = Trip
         fields = [
             'id',
             'trip_request',
+            'role',
+            'pickup_area',
+            'destination_area',
             'status',
             'agreed_price',
             'pickup_details',
             'scheduled_pickup_at',
             'confirmed_at',
+            'started_at',
+            'completed_at',
+            'cancelled_at',
             'counterpart',
         ]
         read_only_fields = fields
+
+    def get_role(self, obj) -> str:
+        return self.context.get('role', 'customer')
 
     def get_counterpart(self, obj):
         person = obj.driver if self.context.get('role') == 'customer' else obj.trip_request.customer
@@ -80,7 +92,11 @@ class DriverInterestSerializer(serializers.ModelSerializer):
     def get_trip(self, obj):
         if obj.status != DriverInterest.Status.SELECTED:
             return None
-        trip = next((t for t in obj.trip_request.trips.all() if t.driver_id == obj.driver_id), None)
+        trips = sorted(
+            (t for t in obj.trip_request.trips.all() if t.driver_id == obj.driver_id),
+            key=lambda t: (t.status == Trip.Status.CANCELLED, -t.pk),
+        )
+        trip = trips[0] if trips else None
         return TripSerializer(trip, context={'role': 'driver'}).data if trip else None
 
     def get_customer_phone(self, obj) -> str | None:
@@ -113,7 +129,8 @@ class TripRequestSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_trip(self, obj):
-        trip = next((t for t in obj.trips.all() if t.status != Trip.Status.CANCELLED), None)
+        trips = sorted(obj.trips.all(), key=lambda t: (t.status == Trip.Status.CANCELLED, -t.pk))
+        trip = trips[0] if trips else None
         return TripSerializer(trip, context={'role': 'customer'}).data if trip else None
 
     def get_pickup_location_is_precise(self, obj) -> bool:

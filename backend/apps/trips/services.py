@@ -5,6 +5,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.accounts.models import DriverProfile
+from apps.notifications.models import Notification
 from apps.notifications.services import create_notification
 from common.exceptions import BusinessRuleError, ConflictError
 
@@ -16,6 +17,14 @@ REQUEST_TRANSITIONS = {
     TripRequest.Status.CONFIRMED: set(),
     TripRequest.Status.CANCELLED: set(),
     TripRequest.Status.EXPIRED: set(),
+}
+
+# Allowed trip transitions; enforced on the server only.
+TRIP_TRANSITIONS = {
+    Trip.Status.CONFIRMED: {Trip.Status.IN_PROGRESS, Trip.Status.CANCELLED},
+    Trip.Status.IN_PROGRESS: {Trip.Status.COMPLETED},
+    Trip.Status.COMPLETED: set(),
+    Trip.Status.CANCELLED: set(),
 }
 
 LIVE_INTEREST_STATUSES = (DriverInterest.Status.INTERESTED, DriverInterest.Status.CONTACTED)
@@ -95,6 +104,7 @@ def create_request(customer, *, pickup_area, destination_area, **extra):
         **extra,
     )
     record_status_event(trip_request, '', trip_request.status, customer)
+    transaction.on_commit(lambda: _notify_matching_drivers(trip_request.pk))
     return trip_request
 
 
@@ -248,3 +258,90 @@ def confirm_trip(
     _decline_live_interests(trip_request, actor, 'INTEREST_NOT_SELECTED')
     create_notification(driver, 'TRIP_CONFIRMED', related_object_id=trip.pk, dedupe_key=f'TRIP_CONFIRMED:{trip.pk}')
     return trip, True
+
+
+def _notify_matching_drivers(trip_request_id):
+    from apps.matching.tasks import notify_matching_drivers
+
+    try:
+        notify_matching_drivers.delay(trip_request_id)
+    except Exception:  # alerts are best-effort and must not break request creation
+        pass
+
+
+def _lock_trip(trip):
+    return Trip.objects.select_for_update().select_related('trip_request__customer', 'driver').get(pk=trip.pk)
+
+
+def _transition_trip(trip, to_status, actor, timestamp_field):
+    if to_status not in TRIP_TRANSITIONS[trip.status]:
+        raise ConflictError(f'Cannot change a {trip.status} trip to {to_status}.')
+    previous = trip.status
+    trip.status = to_status
+    setattr(trip, timestamp_field, timezone.now())
+    trip.save(update_fields=['status', timestamp_field, 'modified_at'])
+    record_status_event(trip, previous, to_status, actor)
+
+
+def _other_party(trip, actor):
+    return trip.trip_request.customer if actor.pk == trip.driver_id else trip.driver
+
+
+def _ensure_party(trip, actor):
+    if actor.pk not in (trip.driver_id, trip.trip_request.customer_id):
+        raise BusinessRuleError('You are not part of this trip.')
+
+
+@transaction.atomic
+def start_trip(trip, actor):
+    """Only the driver starts a trip, and only from CONFIRMED."""
+    trip = _lock_trip(trip)
+    if actor.pk != trip.driver_id:
+        raise BusinessRuleError('Only the driver can start the trip.')
+    _transition_trip(trip, Trip.Status.IN_PROGRESS, actor, 'started_at')
+    create_notification(
+        trip.trip_request.customer, 'TRIP_STARTED', related_object_id=trip.pk, dedupe_key=f'TRIP_STARTED:{trip.pk}'
+    )
+    return trip
+
+
+@transaction.atomic
+def complete_trip(trip, actor):
+    """Either party can close a trip that is IN_PROGRESS, so a forgetful driver cannot leave it open."""
+    trip = _lock_trip(trip)
+    _ensure_party(trip, actor)
+    _transition_trip(trip, Trip.Status.COMPLETED, actor, 'completed_at')
+    create_notification(
+        _other_party(trip, actor), 'TRIP_COMPLETED', related_object_id=trip.pk, dedupe_key=f'TRIP_COMPLETED:{trip.pk}'
+    )
+    return trip
+
+
+@transaction.atomic
+def cancel_trip(trip, actor):
+    """Either party may cancel before the trip starts. Once started, only support/admin can intervene."""
+    trip = _lock_trip(trip)
+    _ensure_party(trip, actor)
+    if trip.status == Trip.Status.IN_PROGRESS:
+        raise ConflictError('A trip in progress cannot be cancelled. Report a problem instead.')
+    _transition_trip(trip, Trip.Status.CANCELLED, actor, 'cancelled_at')
+    create_notification(
+        _other_party(trip, actor), 'TRIP_CANCELLED', related_object_id=trip.pk, dedupe_key=f'TRIP_CANCELLED:{trip.pk}'
+    )
+    return trip
+
+
+def remind_expiring_requests(now=None):
+    """Tell customers once that their OPEN request is about to expire. Idempotent via the dedupe key."""
+    now = now or timezone.now()
+    horizon = now + timedelta(minutes=settings.REQUEST_REMINDER_MINUTES)
+    count = 0
+    for req in TripRequest.objects.filter(
+        status=TripRequest.Status.OPEN, expires_at__gt=now, expires_at__lte=horizon
+    ).select_related('customer'):
+        key = f'REQUEST_EXPIRING:{req.pk}'
+        if Notification.objects.filter(dedupe_key=key).exists():
+            continue
+        create_notification(req.customer, 'REQUEST_EXPIRING', related_object_id=req.pk, dedupe_key=key)
+        count += 1
+    return count

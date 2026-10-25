@@ -7,3 +7,8 @@ from . import services
 def expire_requests():
     """Thin wrapper: business logic lives in services.expire_due_requests (idempotent)."""
     return services.expire_due_requests()
+
+
+@shared_task
+def remind_expiring_requests():
+    return services.remind_expiring_requests()

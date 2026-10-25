@@ -44,6 +44,7 @@ usePolling(async () => {
         <span>السعر: {{ i.trip.agreed_price }}</span>
         <span v-if="i.trip.pickup_details">مكان الركوب: {{ i.trip.pickup_details }}</span>
         <span v-if="i.trip.scheduled_pickup_at">الوقت: {{ formatDateTime(i.trip.scheduled_pickup_at) }}</span>
+        <router-link :to="{ name: 'trip', params: { id: i.trip.id } }">تفاصيل المشوار</router-link>
       </template>
     </section>
 

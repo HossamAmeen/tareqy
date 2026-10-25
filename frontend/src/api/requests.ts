@@ -16,11 +16,17 @@ export interface Person {
 export interface Trip {
   id: number
   trip_request: number
+  role: 'customer' | 'driver'
+  pickup_area: Area
+  destination_area: Area
   status: 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
   agreed_price: string | null
   pickup_details: string
   scheduled_pickup_at: string | null
   confirmed_at: string | null
+  started_at: string | null
+  completed_at: string | null
+  cancelled_at: string | null
   counterpart: Person
 }
 

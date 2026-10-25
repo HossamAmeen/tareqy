@@ -52,10 +52,13 @@ async function cancel() {
       <span v-if="request.status === 'OPEN'">ينتهي: {{ formatDateTime(request.expires_at) }}</span>
       <p v-if="request.status === 'OPEN'">بانتظار سائق مهتم. سنعرض هنا السائقين عند اهتمامهم بطلبك.</p>
       <template v-else-if="request.status === 'CONFIRMED' && request.trip">
-        <strong>تم تأكيد المشوار</strong>
+        <strong>{{
+          request.trip.status === 'CANCELLED' ? 'أُلغي المشوار المؤكد' : 'تم تأكيد المشوار'
+        }}</strong>
         <span>السائق: {{ request.trip.counterpart.name || 'سائق' }}</span>
         <span>السعر المتفق عليه: {{ request.trip.agreed_price }}</span>
         <span v-if="request.trip.pickup_details">مكان الركوب: {{ request.trip.pickup_details }}</span>
+        <router-link :to="{ name: 'trip', params: { id: request.trip.id } }">تفاصيل المشوار</router-link>
         <span class="actions">
           <a :href="phoneHref(request.trip.counterpart.phone)">اتصال</a>
           <a :href="whatsappHref(request.trip.counterpart.phone)" target="_blank" rel="noopener">واتساب</a>

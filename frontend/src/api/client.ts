@@ -103,6 +103,6 @@ export function errorMessage(err: unknown, fallback = 'حدث خطأ، حاول 
   const firstField = body.errors && Object.values(body.errors)[0]?.[0]
   return firstField || body.message || fallback
 }
-export async function del<T>(url: string): Promise<T> {
-  return (await http.delete<Envelope<T>>(url)).data.data
+export async function del<T>(url: string, body?: unknown): Promise<T> {
+  return (await http.delete<Envelope<T>>(url, { data: body })).data.data
 }

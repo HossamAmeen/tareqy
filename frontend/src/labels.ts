@@ -29,3 +29,35 @@ export const INTEREST_LABELS: Record<string, string> = {
 
 export const phoneHref = (phone: string) => `tel:${phone}`
 export const whatsappHref = (phone: string) => `https://wa.me/${phone.replace(/\D/g, '')}`
+
+export const TRIP_STATUS_LABELS: Record<string, string> = {
+  CONFIRMED: 'مؤكد',
+  IN_PROGRESS: 'جارٍ',
+  COMPLETED: 'مكتمل',
+  CANCELLED: 'ملغي',
+}
+
+/** Where a notification leads. Customers get request pages, drivers get their own screens. */
+export function notificationTarget(type: string, id: number | null) {
+  if (id === null) return null
+  switch (type) {
+    case 'DRIVER_INTERESTED':
+    case 'REQUEST_EXPIRING':
+      return { name: 'request-detail', params: { id } }
+    case 'TRIP_CONFIRMED':
+    case 'TRIP_STARTED':
+    case 'TRIP_COMPLETED':
+    case 'TRIP_CANCELLED':
+      return { name: 'trip', params: { id } }
+    case 'NEW_MATCHING_REQUEST':
+      return { name: 'driver-requests' }
+    case 'CUSTOMER_CONTACTED':
+    case 'INTEREST_NOT_SELECTED':
+    case 'REQUEST_CHANGED':
+    case 'REQUEST_CANCELLED':
+    case 'REQUEST_EXPIRED':
+      return { name: 'driver-interests' }
+    default:
+      return null
+  }
+}

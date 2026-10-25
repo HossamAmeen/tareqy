@@ -172,3 +172,25 @@ def withdraw_interest(driver, trip_request_id):
         interest.save(update_fields=['status', 'modified_at'])
         record_status_event(interest, previous, interest.status, driver)
     return interest
+
+
+def notify_matching_drivers(trip_request_id):
+    """Alert available drivers for whom a new request is a candidate. One alert per driver and request."""
+    trip_request = TripRequest.objects.filter(pk=trip_request_id).first()
+    if trip_request is None:
+        return 0
+    now = timezone.now()
+    notified = 0
+    profiles = DriverProfile.objects.select_related('user').filter(
+        availability_status=DriverProfile.Availability.AVAILABLE
+    )
+    for profile in profiles:
+        if is_candidate(profile, trip_request, now):
+            create_notification(
+                profile.user,
+                'NEW_MATCHING_REQUEST',
+                related_object_id=trip_request.pk,
+                dedupe_key=f'NEW_MATCHING_REQUEST:{trip_request.pk}:{profile.user_id}',
+            )
+            notified += 1
+    return notified

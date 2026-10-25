@@ -166,6 +166,11 @@ DRIVER_LOCATION_STALE_SECONDS = env.int('DRIVER_LOCATION_STALE_SECONDS', default
 DRIVER_MATCH_RADIUS_KM = env.float('DRIVER_MATCH_RADIUS_KM', default=3.0)
 DRIVER_DESTINATION_TTL_MINUTES = env.int('DRIVER_DESTINATION_TTL_MINUTES', default=120)
 DRIVER_MAX_ACTIVE_TRIPS = env.int('DRIVER_MAX_ACTIVE_TRIPS', default=1)
+REQUEST_REMINDER_MINUTES = env.int('REQUEST_REMINDER_MINUTES', default=5)
+# Web Push (VAPID). Push is disabled when no keys are configured; the in-app list still works.
+VAPID_PUBLIC_KEY = env('VAPID_PUBLIC_KEY', default='')
+VAPID_PRIVATE_KEY = env('VAPID_PRIVATE_KEY', default='')
+VAPID_CLAIMS_EMAIL = env('VAPID_CLAIMS_EMAIL', default='admin@example.com')
 AUTH_USER_MODEL = 'accounts.User'
 
 # OTP login
@@ -179,4 +184,5 @@ SMS_BACKEND = env('SMS_BACKEND', default='apps.accounts.sms.ConsoleSMSBackend')
 if CELERY_BEAT_ENABLED:
     CELERY_BEAT_SCHEDULE = {
         'expire-trip-requests': {'task': 'apps.trips.tasks.expire_requests', 'schedule': 60.0},
+        'remind-expiring-requests': {'task': 'apps.trips.tasks.remind_expiring_requests', 'schedule': 60.0},
     }
