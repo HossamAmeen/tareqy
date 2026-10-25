@@ -1,0 +1,53 @@
+name: Deploy over SSH
+description: >
+  Checks out the given commit on the target host and runs the repository's existing deploy path.
+  mode=systemd -> backend/deploy/scripts/deploy.sh <env> (venv + systemd + nginx generator, with healthcheck.sh).
+  mode=docker  -> docker compose -f backend/docker/<env>/docker-compose.yml up --build -d.
+  NOT EXERCISED.
+inputs:
+  environment: {description: staging or production, required: true}
+  sha: {description: Commit to deploy, required: true}
+  ssh-host: {required: true}
+  ssh-user: {required: true}
+  ssh-key: {required: true}
+  ssh-known-hosts: {required: true}
+  app-path: {description: Repo checkout path on the host, required: true}
+  frontend-path: {description: Directory served for the SPA bundle, required: true}
+  mode: {description: systemd or docker, required: false, default: systemd}
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        SSH_KEY: ${{ inputs.ssh-key }}
+        KNOWN_HOSTS: ${{ inputs.ssh-known-hosts }}
+      run: |
+        install -m 700 -d ~/.ssh
+        printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+        printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+    - shell: bash
+      env:
+        TARGET: ${{ inputs.ssh-user }}@${{ inputs.ssh-host }}
+        APP_PATH: ${{ inputs.app-path }}
+        FRONTEND_PATH: ${{ inputs.frontend-path }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        SHA: ${{ inputs.sha }}
+        MODE: ${{ inputs.mode }}
+      run: |
+        SSH="ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=yes"
+        # Frontend: static bundle first (harmless if the backend deploy then fails).
+        rsync -az --delete -e "$SSH" frontend-dist/ "$TARGET:$FRONTEND_PATH/"
+        # Backend: the host keeps its own backend/.env (never written by CI).
+        $SSH "$TARGET" bash -s -- "$APP_PATH" "$ENVIRONMENT" "$SHA" "${MODE:-systemd}" <<'REMOTE'
+        set -euo pipefail
+        APP_PATH="$1"; ENVIRONMENT="$2"; SHA="$3"; MODE="$4"
+        cd "$APP_PATH"
+        git fetch --tags origin
+        git checkout --detach "$SHA"
+        cd backend
+        if [ "$MODE" = docker ]; then
+          docker compose --env-file .env -f "docker/$ENVIRONMENT/docker-compose.yml" up --build -d
+        else
+          deploy/scripts/deploy.sh "$ENVIRONMENT"
+        fi
+        REMOTE

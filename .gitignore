@@ -15,3 +15,4 @@ __pycache__/
 db.sqlite3
 openapi.yml
 deploy/nginx/generated/
+e2e.sqlite3

@@ -33,10 +33,11 @@ export default defineConfig({
     }),
   ],
   server: {
-    proxy: { '/api': 'http://localhost:8000' },
+    proxy: { '/api': process.env.VITE_API_PROXY ?? 'http://localhost:8000' },
   },
   test: {
     environment: 'jsdom',
     globals: true,
+    exclude: ['**/node_modules/**', 'e2e/**'],
   },
 })

@@ -126,8 +126,8 @@
 
 | ID | Type | Task | Notes |
 |---|---|---|---|
-| TD-1 | OPS | CI: lint + tests for backend and frontend | Originally S0-6; postponed |
-| TD-2 | OPS | CD: staging/prod deploy pipeline | Originally part of S6-8; postponed |
+| TD-1 | OPS | CI: lint + tests for backend and frontend | **Done** (.github/workflows/ci.yml; backend on PostgreSQL, frontend, Playwright e2e job). Checked locally only; not yet run on GitHub |
+| TD-2 | OPS | CD: staging/prod deploy pipeline | **Written, untested** (.github/workflows/cd.yml, docs/cd.md); never executed |
 
 ---
 
