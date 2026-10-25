@@ -122,6 +122,7 @@ REST_FRAMEWORK = {
         'auth': env('RATELIMIT_AUTH', default='10/minute'),
         'sensitive': env('RATELIMIT_SENSITIVE', default='30/minute'),
         'health': env('RATELIMIT_HEALTH', default='120/minute'),
+        'location': env('RATELIMIT_LOCATION', default='30/minute'),
     },
 }
 
@@ -162,6 +163,9 @@ CELERY_WORKER_CONCURRENCY = env.int('CELERY_WORKER_CONCURRENCY', default=2)
 # Business settings (business doc sections 6-7)
 REQUEST_TTL_MINUTES = env.int('REQUEST_TTL_MINUTES', default=30)
 DRIVER_LOCATION_STALE_SECONDS = env.int('DRIVER_LOCATION_STALE_SECONDS', default=120)
+DRIVER_MATCH_RADIUS_KM = env.float('DRIVER_MATCH_RADIUS_KM', default=3.0)
+DRIVER_DESTINATION_TTL_MINUTES = env.int('DRIVER_DESTINATION_TTL_MINUTES', default=120)
+DRIVER_MAX_ACTIVE_TRIPS = env.int('DRIVER_MAX_ACTIVE_TRIPS', default=1)
 AUTH_USER_MODEL = 'accounts.User'
 
 # OTP login

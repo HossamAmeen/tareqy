@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 import pytest
 from django.core.cache import cache
+from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework.throttling import SimpleRateThrottle
 
@@ -22,6 +25,7 @@ def _isolated_state(settings, monkeypatch):
             'auth': '1000/minute',
             'sensitive': '1000/minute',
             'health': '1000/minute',
+            'location': '1000/minute',
         },
     )
     cache.clear()
@@ -81,3 +85,34 @@ def areas(db):
     from apps.areas.models import Area
 
     return {n: Area.objects.create(name=n) for n in ['محطة', 'أربعين', 'معلمين']}
+
+
+@pytest.fixture
+def make_request(customer, areas):
+    from apps.trips.models import TripRequest
+
+    def _make(**extra):
+        defaults = {
+            'customer': customer,
+            'pickup_area': areas['محطة'],
+            'destination_area': areas['أربعين'],
+            'expires_at': timezone.now() + timedelta(minutes=30),
+        }
+        return TripRequest.objects.create(**{**defaults, **extra})
+
+    return _make
+
+
+@pytest.fixture
+def trip_request(make_request):
+    return make_request()
+
+
+@pytest.fixture
+def make_interest(make_user):
+    from apps.trips.models import DriverInterest
+
+    def _make(trip_request, status='INTERESTED'):
+        return DriverInterest.objects.create(trip_request=trip_request, driver=make_user(is_driver=True), status=status)
+
+    return _make

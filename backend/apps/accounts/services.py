@@ -9,6 +9,7 @@ from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from common.exceptions import BusinessRuleError
+from common.geo import haversine_km
 
 from .models import DriverProfile, OTPCode, User
 from .sms import send_sms
@@ -76,3 +77,54 @@ def update_profile(user, *, name=None, is_customer=None, is_driver=None):
     if user.is_driver:
         DriverProfile.objects.get_or_create(user=user)
     return user
+
+
+def get_driver_profile(user):
+    return DriverProfile.objects.select_related('current_area', 'destination_area').get_or_create(user=user)[0]
+
+
+_UNSET = object()
+
+
+@transaction.atomic
+def update_driver_profile(user, *, availability_status=None, destination_area=_UNSET, destination_ttl_minutes=None):
+    """Toggle availability and/or set (or clear, with None) the driver's time-limited destination."""
+    profile = DriverProfile.objects.select_for_update().get_or_create(user=user)[0]
+    if availability_status is not None:
+        profile.availability_status = availability_status
+    if destination_area is not _UNSET:
+        if destination_area is None:
+            profile.destination_area = None
+            profile.destination_expires_at = None
+        else:
+            if not destination_area.is_active:
+                raise BusinessRuleError('Selected area is not available.')
+            ttl = destination_ttl_minutes or settings.DRIVER_DESTINATION_TTL_MINUTES
+            profile.destination_area = destination_area
+            profile.destination_expires_at = timezone.now() + timedelta(minutes=ttl)
+    elif destination_ttl_minutes is not None:
+        raise BusinessRuleError('destination_ttl_minutes requires destination_area.')
+    profile.save()
+    return profile
+
+
+@transaction.atomic
+def update_driver_location(user, *, latitude, longitude, current_area=None):
+    """Store the driver's position and stamp its freshness. The area defaults to the nearest known one."""
+    from apps.areas.models import Area
+
+    profile = DriverProfile.objects.select_for_update().get_or_create(user=user)[0]
+    if current_area is None:
+        radius = settings.DRIVER_MATCH_RADIUS_KM
+        nearest, best = None, radius
+        for area in Area.objects.filter(is_active=True, latitude__isnull=False, longitude__isnull=False):
+            distance = haversine_km(float(latitude), float(longitude), float(area.latitude), float(area.longitude))
+            if distance <= best:
+                nearest, best = area, distance
+        current_area = nearest
+    profile.current_latitude = latitude
+    profile.current_longitude = longitude
+    profile.current_area = current_area
+    profile.location_updated_at = timezone.now()
+    profile.save()
+    return profile

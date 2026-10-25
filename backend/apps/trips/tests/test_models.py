@@ -1,4 +1,3 @@
-
 import pytest
 from django.db import IntegrityError, transaction
 from django.utils import timezone

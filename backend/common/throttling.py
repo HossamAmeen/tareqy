@@ -13,3 +13,7 @@ class SensitiveRateThrottle(UserRateThrottle):
 
 class HealthRateThrottle(AnonRateThrottle):
     scope = 'health'
+
+
+class LocationRateThrottle(UserRateThrottle):
+    scope = 'location'

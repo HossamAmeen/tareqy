@@ -121,6 +121,15 @@
 
 ---
 
+## Deferred / To-do
+
+| ID | Type | Task | Notes |
+|---|---|---|---|
+| TD-1 | OPS | CI: lint + tests for backend and frontend | Originally S0-6; postponed |
+| TD-2 | OPS | CD: staging/prod deploy pipeline | Originally part of S6-8; postponed |
+
+---
+
 ## Team-lead notes
 
 - **Definition of Done:** merged PR, tests passing in CI, OpenAPI updated, server-validated transitions, reviewed by one other dev.
