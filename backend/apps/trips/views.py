@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 
 from apps.accounts.permissions import IsCustomer
 from common.responses import success_response
+from common.throttling import SensitiveRateThrottle
 from common.views import EnvelopeMixin
 
 from . import selectors, services
@@ -46,7 +47,7 @@ class TripRequestViewSet(
         return success_response(TripRequestSerializer(trip_request).data, message='Request updated.')
 
     @extend_schema(request=None, responses={200: TripRequestSerializer})
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], throttle_classes=[SensitiveRateThrottle])
     def cancel(self, request, pk=None):
         trip_request = services.cancel_request(self.get_object(), request.user)
         return success_response(TripRequestSerializer(trip_request).data, message='Request cancelled.')
@@ -64,14 +65,15 @@ class TripRequestViewSet(
         return success_response(InterestSerializer(interest).data, message='Marked as contacted.')
 
     @extend_schema(request=ConfirmSerializer, responses={200: TripSerializer, 201: TripSerializer})
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], throttle_classes=[SensitiveRateThrottle])
     def confirm(self, request, pk=None):
         """Confirm one driver. Send an `Idempotency-Key` header so a retried call returns the same trip."""
+        trip_request = self.get_object()  # object-level access first, so outsiders get 404 before any validation
         serializer = ConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         trip, created = services.confirm_trip(
-            self.get_object(),
+            trip_request,
             request.user,
             interest_id=data['interest'],
             agreed_price=data['agreed_price'],

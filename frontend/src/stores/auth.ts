@@ -8,6 +8,7 @@ export interface User {
   name: string
   is_customer: boolean
   is_driver: boolean
+  is_staff?: boolean
   account_status: string
 }
 

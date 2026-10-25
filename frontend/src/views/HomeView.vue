@@ -40,6 +40,21 @@ function logout() {
     </div>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
 
+    <router-link v-if="auth.user?.is_staff" class="card" :to="{ name: 'admin' }">لوحة الإدارة</router-link>
     <button type="button" class="secondary" @click="logout">تسجيل الخروج</button>
+    <nav class="links">
+      <router-link :to="{ name: 'safety' }">إرشادات السلامة</router-link>
+      <router-link :to="{ name: 'terms' }">الشروط</router-link>
+      <router-link :to="{ name: 'privacy' }">الخصوصية</router-link>
+    </nav>
   </main>
 </template>
+
+<style scoped>
+.links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+</style>

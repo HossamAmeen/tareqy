@@ -1,10 +1,12 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Trip } from '../api/requests'
+import * as reports from '../api/reports'
 import * as api from '../api/trips'
 import TripDetailView from './TripDetailView.vue'
 
 vi.mock('../api/trips')
+vi.mock('../api/reports')
 vi.mock('vue-router', () => ({ useRoute: () => ({ params: { id: '4' } }) }))
 
 const trip = (over: Partial<Trip>): Trip => ({
@@ -31,7 +33,12 @@ async function show(t: Trip) {
   await flushPromises()
   return wrapper
 }
-const labels = (w: ReturnType<typeof mount>) => w.findAll('button').map((b) => b.text())
+const REPORT = 'الإبلاغ عن مشكلة'
+const labels = (w: ReturnType<typeof mount>) =>
+  w
+    .findAll('button')
+    .map((b) => b.text())
+    .filter((t) => t !== REPORT)
 
 describe('TripDetailView', () => {
   beforeEach(() => {
@@ -84,5 +91,27 @@ describe('TripDetailView', () => {
     const wrapper = await show(trip({}))
     await wrapper.findAll('button')[1].trigger('click')
     expect(api.cancelTrip).not.toHaveBeenCalled()
+  })
+})
+
+describe('TripDetailView reporting', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('files a report about the trip', async () => {
+    vi.mocked(reports.reportTrip).mockResolvedValue(undefined)
+    vi.mocked(api.fetchTrip).mockResolvedValue(trip({}))
+    const wrapper = mount(TripDetailView, { global: { stubs: { 'router-link': true } } })
+    await flushPromises()
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'الإبلاغ عن مشكلة')!
+      .trigger('click')
+    await wrapper.find('textarea').setValue('السائق لم يحضر')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(reports.reportTrip).toHaveBeenCalledWith(4, 'السائق لم يحضر')
+    expect(wrapper.text()).toContain('وصلنا بلاغك')
   })
 })

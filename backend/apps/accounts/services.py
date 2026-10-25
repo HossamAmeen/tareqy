@@ -91,6 +91,12 @@ def update_driver_profile(user, *, availability_status=None, destination_area=_U
     """Toggle availability and/or set (or clear, with None) the driver's time-limited destination."""
     profile = DriverProfile.objects.select_for_update().get_or_create(user=user)[0]
     if availability_status is not None:
+        if (
+            availability_status == DriverProfile.Availability.AVAILABLE
+            and settings.DRIVER_VERIFICATION_REQUIRED
+            and not profile.is_verified
+        ):
+            raise BusinessRuleError('Your driver account is awaiting verification by our team.')
         profile.availability_status = availability_status
     if destination_area is not _UNSET:
         if destination_area is None:

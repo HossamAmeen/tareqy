@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'apps.matching',
     'apps.notifications',
     'apps.reports',
+    'apps.adminpanel',
 ]
 
 MIDDLEWARE = [
@@ -92,6 +93,9 @@ MEDIA_ROOT = env('MEDIA_PATH', default=str(BASE_DIR / 'media'))
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localhost:5173'])
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
+X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'same-origin'
 
 # Rate limiting (shared cache required when running multiple instances)
 RATELIMIT_CACHE_URL = env('RATELIMIT_CACHE_URL', default='')
@@ -131,6 +135,14 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=env.int('JWT_REFRESH_TOKEN_LIFETIME_DAYS', default=7)),
 }
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'filters': {'redact_phone': {'()': 'common.logging.RedactPhoneFilter'}},
+    'handlers': {'console': {'class': 'logging.StreamHandler', 'filters': ['redact_phone']}},
+    'root': {'handlers': ['console'], 'level': env('LOG_LEVEL', default='INFO')},
+}
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Fi Tariqi API',
     'DESCRIPTION': 'Ride-matching API (MVP).',
@@ -165,6 +177,8 @@ REQUEST_TTL_MINUTES = env.int('REQUEST_TTL_MINUTES', default=30)
 DRIVER_LOCATION_STALE_SECONDS = env.int('DRIVER_LOCATION_STALE_SECONDS', default=120)
 DRIVER_MATCH_RADIUS_KM = env.float('DRIVER_MATCH_RADIUS_KM', default=3.0)
 DRIVER_DESTINATION_TTL_MINUTES = env.int('DRIVER_DESTINATION_TTL_MINUTES', default=120)
+# Drivers must be verified by an admin before they can receive requests (approved decision 1).
+DRIVER_VERIFICATION_REQUIRED = env.bool('DRIVER_VERIFICATION_REQUIRED', default=True)
 DRIVER_MAX_ACTIVE_TRIPS = env.int('DRIVER_MAX_ACTIVE_TRIPS', default=1)
 REQUEST_REMINDER_MINUTES = env.int('REQUEST_REMINDER_MINUTES', default=5)
 # Web Push (VAPID). Push is disabled when no keys are configured; the in-app list still works.

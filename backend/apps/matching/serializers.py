@@ -18,6 +18,7 @@ class DriverProfileSerializer(serializers.ModelSerializer):
         model = DriverProfile
         fields = [
             'availability_status',
+            'is_verified',
             'current_area',
             'location_updated_at',
             'location_status',

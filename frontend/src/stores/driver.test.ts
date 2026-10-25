@@ -7,6 +7,7 @@ vi.mock('../api/driver')
 
 const profile: api.DriverProfile = {
   availability_status: 'OFFLINE',
+  is_verified: true,
   current_area: null,
   location_updated_at: null,
   location_status: 'none',

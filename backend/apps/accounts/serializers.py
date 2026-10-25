@@ -18,3 +18,4 @@ class UserSerializer(serializers.Serializer):
     is_customer = serializers.BooleanField(required=False)
     is_driver = serializers.BooleanField(required=False)
     account_status = serializers.CharField(read_only=True)
+    is_staff = serializers.BooleanField(read_only=True)

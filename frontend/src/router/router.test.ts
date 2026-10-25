@@ -7,7 +7,7 @@ import { createAppRouter } from './index'
 
 const user = { id: 1, phone: '+201', name: '', is_customer: true, is_driver: false, account_status: 'ACTIVE' }
 
-function setup(authed: boolean, role = user) {
+function setup(authed: boolean, role: typeof user & { is_staff?: boolean } = user) {
   localStorage.clear()
   if (authed) saveTokens({ access: 'a', refresh: 'r' })
   setActivePinia(createPinia())
@@ -55,5 +55,25 @@ describe('route guards', () => {
     const router = setup(true, { ...user, is_driver: true })
     await router.push('/driver')
     expect(router.currentRoute.value.name).toBe('driver')
+  })
+
+  it('keeps non-staff users out of the admin dashboard', async () => {
+    const router = setup(true)
+    await router.push('/admin')
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
+  it('lets staff into the admin dashboard', async () => {
+    const router = setup(true, { ...user, is_staff: true })
+    await router.push('/admin')
+    expect(router.currentRoute.value.name).toBe('admin')
+  })
+
+  it('serves safety, terms and privacy pages without login', async () => {
+    const router = setup(false)
+    for (const name of ['safety', 'terms', 'privacy']) {
+      await router.push({ name })
+      expect(router.currentRoute.value.name).toBe(name)
+    }
   })
 })

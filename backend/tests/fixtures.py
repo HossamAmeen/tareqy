@@ -15,6 +15,7 @@ def _isolated_state(settings, monkeypatch):
     LocMemSMSBackend.outbox.clear()
     """Isolated cache, deterministic secrets and generous default throttle rates."""
     settings.HEALTH_CHECK_PASSWORD = 'test-health-secret'
+    settings.DRIVER_VERIFICATION_REQUIRED = False
     settings.CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
     monkeypatch.setattr(
         SimpleRateThrottle,

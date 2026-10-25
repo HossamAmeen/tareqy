@@ -23,6 +23,8 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
     is_customer = models.BooleanField(default=True)
     is_driver = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
+    # Pilot/test accounts are excluded from KPIs.
+    is_test_account = models.BooleanField(default=False)
 
     objects = UserManager()
     deleted_objects = DeletedManager()
@@ -52,6 +54,9 @@ class DriverProfile(BaseModel):
     current_area = models.ForeignKey(Area, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     destination_area = models.ForeignKey(Area, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     destination_expires_at = models.DateTimeField(null=True, blank=True)
+    # Set by an admin after checking the driver's licence and vehicle (decision 1).
+    is_verified = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f'Driver {self.user_id}'

@@ -18,6 +18,11 @@ class Report(BaseModel):
     trip = models.ForeignKey('trips.Trip', null=True, blank=True, on_delete=models.SET_NULL, related_name='reports')
     reason = models.TextField()
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.OPEN)
+    resolution_note = models.CharField(max_length=500, blank=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+'
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']

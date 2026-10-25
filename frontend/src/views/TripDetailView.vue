@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { errorMessage } from '../api/client'
 import type { Trip } from '../api/requests'
+import { reportTrip } from '../api/reports'
 import * as api from '../api/trips'
 import { usePolling } from '../composables/usePolling'
 import { formatDateTime, phoneHref, TRIP_STATUS_LABELS, whatsappHref } from '../labels'
@@ -24,6 +25,25 @@ async function refresh(clearError = true) {
   }
 }
 usePolling(() => refresh())
+
+const reporting = ref(false)
+const reason = ref('')
+const reported = ref(false)
+
+async function sendReport() {
+  busy.value = true
+  try {
+    await reportTrip(id, reason.value.trim())
+    reported.value = true
+    reporting.value = false
+    reason.value = ''
+    error.value = ''
+  } catch (e) {
+    error.value = errorMessage(e)
+  } finally {
+    busy.value = false
+  }
+}
 
 async function act(action: (id: number) => Promise<Trip>, confirmText?: string) {
   if (confirmText && !window.confirm(confirmText)) return
@@ -93,11 +113,35 @@ async function act(action: (id: number) => Promise<Trip>, confirmText?: string) 
       </p>
     </template>
 
+    <section v-if="trip" class="stack">
+      <p v-if="reported" class="card" role="status">وصلنا بلاغك وسنراجعه. شكرًا لك.</p>
+      <button v-else-if="!reporting" type="button" class="secondary" @click="reporting = true">
+        الإبلاغ عن مشكلة
+      </button>
+      <form v-else class="card stack" @submit.prevent="sendReport">
+        <label>
+          ما المشكلة؟
+          <textarea v-model="reason" rows="4" minlength="5" maxlength="1000" required />
+        </label>
+        <button type="submit" :disabled="busy || reason.trim().length < 5">إرسال البلاغ</button>
+        <button type="button" class="secondary" @click="reporting = false">رجوع</button>
+      </form>
+      <router-link :to="{ name: 'safety' }">إرشادات السلامة</router-link>
+    </section>
+
     <router-link to="/">الرئيسية</router-link>
   </main>
 </template>
 
 <style scoped>
+textarea {
+  font: inherit;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
 .actions {
   display: flex;
   gap: 16px;

@@ -7,6 +7,7 @@ export type InterestStatus = 'INTERESTED' | 'CONTACTED' | 'WITHDRAWN' | 'DECLINE
 
 export interface DriverProfile {
   availability_status: Availability
+  is_verified: boolean
   current_area: Area | null
   location_updated_at: string | null
   location_status: LocationStatus

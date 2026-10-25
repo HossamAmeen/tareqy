@@ -67,11 +67,19 @@ const clearDestination = () => run(() => driver.update({ destination_area: null 
 
     <section v-if="driver.profile" class="card stack">
       <strong>{{ available ? 'استقبال الطلبات: مفعّل' : 'استقبال الطلبات: متوقف' }}</strong>
+      <p v-if="!driver.profile.is_verified" class="banner" data-testid="unverified">
+        حسابك بانتظار التحقق من فريقنا (الرخصة والمركبة). لن تتمكن من استقبال الطلبات قبل ذلك.
+      </p>
       <p class="hint">
         نستخدم موقعك أثناء فتح التطبيق فقط، لعرض الطلبات القريبة منك على الأشخاص المناسبين. لا نتتبعك في
         الخلفية، ويمكنك الإيقاف في أي وقت.
       </p>
-      <button type="button" :class="{ secondary: available }" :disabled="busy" @click="toggle">
+      <button
+        type="button"
+        :class="{ secondary: available }"
+        :disabled="busy || (!available && !driver.profile.is_verified)"
+        @click="toggle"
+      >
         {{ available ? 'إيقاف استقبال الطلبات' : 'ابدأ استقبال الطلبات' }}
       </button>
       <p v-if="geo.permission.value === 'denied'" class="error">

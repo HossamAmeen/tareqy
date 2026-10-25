@@ -63,6 +63,30 @@ export const routes = [
     name: 'notifications',
     component: () => import('../views/NotificationsView.vue'),
   },
+  {
+    path: '/admin',
+    name: 'admin',
+    component: () => import('../views/AdminView.vue'),
+    meta: { role: 'admin' },
+  },
+  {
+    path: '/safety',
+    name: 'safety',
+    component: () => import('../views/PageView.vue'),
+    meta: { public: true, page: 'safety' },
+  },
+  {
+    path: '/terms',
+    name: 'terms',
+    component: () => import('../views/PageView.vue'),
+    meta: { public: true, page: 'terms' },
+  },
+  {
+    path: '/privacy',
+    name: 'privacy',
+    component: () => import('../views/PageView.vue'),
+    meta: { public: true, page: 'privacy' },
+  },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
@@ -84,6 +108,7 @@ export function createAppRouter(history = createWebHistory()) {
     }
     // Role pages are only for users who enabled that role.
     if (to.meta.role === 'driver' && !auth.user?.is_driver) return { name: 'home' }
+    if (to.meta.role === 'admin' && !auth.user?.is_staff) return { name: 'home' }
     if (to.meta.role === 'customer' && !auth.user?.is_customer) return { name: 'home' }
   })
 

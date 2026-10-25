@@ -39,6 +39,7 @@ def driver_is_eligible(profile, now=None):
         and user.account_status == User.AccountStatus.ACTIVE
         and user.deleted_at is None
         and profile.availability_status == DriverProfile.Availability.AVAILABLE  # rule 2
+        and (profile.is_verified or not settings.DRIVER_VERIFICATION_REQUIRED)
         and location_is_fresh(profile, now)  # rule 3
         and destination_is_active(profile, now)
         and _has_capacity(user)  # rule 6
